@@ -83,6 +83,20 @@ namespace SQLite
 			BusyTimeout = TimeSpan.FromSeconds (0.1);
 		}
 
+		static SQLiteConnection ()
+		{
+			if (_preserveDuringLinkMagic) {
+				var ti = new TableInfo ();
+				ti.name = "magic";
+			}
+		}
+
+		/// <summary>
+		/// Used to list some code that we want the MonoTouch linker
+		/// to see, but that we never want to actually execute.
+		/// </summary>
+		static bool _preserveDuringLinkMagic = false;
+
 		/// <summary>
 		/// Sets a busy handler to sleep the specified amount of time when a table is locked.
 		/// The handler will sleep multiple times until a total time of <see cref="BusyTimeout"/> has accumulated.
@@ -155,20 +169,27 @@ namespace SQLite
 				map = GetMapping (ty);
 				_tables.Add (ty.FullName, map);
 			}
-			var query = "create table if not exists \"" + map.TableName + "\"(\n";
+			var query = "create table \"" + map.TableName + "\"(\n";
 			
 			var decls = map.Columns.Select (p => Orm.SqlDecl (p));
 			var decl = string.Join (",\n", decls.ToArray ());
 			query += decl;
 			query += ")";
 			
-			var count = Execute (query);
+			var count = 0;
+
+			try {
+				Execute (query);
+				count = 1;
+			}
+			catch (SQLiteException) {
+			}
 			
-			if (count == 0) { //Possible bug: This always seems to return 0?
+			if (count == 0) {
 				// Table already exists, migrate it
 				MigrateTable (map);
 			}
-			
+
 			foreach (var p in map.Columns.Where (x => x.IsIndexed)) {
 				var indexName = map.TableName + "_" + p.Name;
 				var q = string.Format ("create index if not exists \"{0}\" on \"{1}\"(\"{2}\")", indexName, map.TableName, p.Name);
@@ -198,7 +219,7 @@ namespace SQLite
 			var query = "pragma table_info(\"" + map.TableName + "\")";
 			
 			var existingCols = Query<TableInfo> (query);
-			
+
 			var toBeAdded = new List<TableMapping.Column> ();
 			
 			foreach (var p in map.Columns) {
