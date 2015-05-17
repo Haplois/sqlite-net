@@ -36,9 +36,9 @@ namespace SQLite.Tests
                 CreateTable<VO>();
             }
 
-            public int CountWithFlag(Boolean flag)
+            public int CountWithFlag(bool flag)
             {
-                var cmd = CreateCommand("SELECT COUNT(*) FROM VO Where Flag = ?", flag);
+                var cmd = CreateCommand("SELECT COUNT(*) FROM VO Where Flag = @flag", SQLiteParameter.From(new { flag }));
                 return cmd.ExecuteScalar<int>();                
             }
         }
