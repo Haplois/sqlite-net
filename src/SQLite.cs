@@ -73,7 +73,7 @@ namespace SQLite
             }
 
             return expando;
-        }
+        } 
 
         public static IDictionary<string, string> ToExpandoString(object anonymousObject)
         {
